@@ -1,0 +1,17 @@
+<div>
+	<% cursor.forEach(function(image) { %>
+	<div>
+		<div>
+		<img
+			src="data:image/<%=image.img.contentType%>;base64,
+					<%=image.img.data.toString('base64')%>"
+		/>
+		<div>
+			<h5><%= image.filename %></h5>
+
+		
+		</div>
+		</div>
+	</div>
+	<% }) %>
+	</div>
