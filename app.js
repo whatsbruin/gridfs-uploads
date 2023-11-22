@@ -81,34 +81,27 @@ const storage = new GridFsStorage({
   }
 })
 
+// Middleware for Multer uploads
+//
 const upload = multer({ storage });
+
 
 app.get("/", async (req, res) => {
   const cursor = gfs.files.find({});
   const allFiles = await cursor.toArray();
   await cursor.close();
-
   res.render("imagePage", {
     files: allFiles,
   })
 
 })
 
-app.get("/files", async (req, res) => {
 
-  const cursor = gfs.files.find({});
-  const allValues = await cursor.toArray();
-  await cursor.close();
-
-  res.json(allValues)
-})
-
+// Renders images
 app.get("/image/:filename", async (req, res) => {
-
   const cursor = gfs.files.find({ filename: req.params.filename });
   const files = await cursor.toArray();
   await cursor.close();
-
   files.map(file => {
     if (
       file.contentType === 'image/jpeg' ||
@@ -118,17 +111,14 @@ app.get("/image/:filename", async (req, res) => {
       readStream.pipe(res)
     }
   });
-
 });
 
-
+// Root Route to update images
 app.post('/', upload.single('image'), (req, res, next) => {
   res.redirect("/")
 });
 
-
 app.delete('/delete/:fileID', async (req, res) => {
-
   const obj_id = new mongoose.Types.ObjectId(req.params.fileID);
   await gridfsBucket.delete(obj_id)
   res.redirect('/');
@@ -136,50 +126,37 @@ app.delete('/delete/:fileID', async (req, res) => {
 
 
 //
+// Testing attaching files to models
+//
 app.get('/contact', (req, res) => {
   res.render('contact');
 });
 
 app.get('/contacts', async (req, res) => {
   let contact = await Contact.find({})
-  // const cursor = gfs.files.find({});
-  // const allFiles = await cursor.toArray();
   res.render("showContacts", {
     contact: contact,
   })
-  // res.json(contact)
-  // await cursor.close();
-
 });
-app.get('/contactsall', async (req, res) => {
-  let contact = await Contact.find({})
-  // const cursor = gfs.files.find({});
-  // const allFiles = await cursor.toArray();
-  // res.render("showContacts", {
-  //   contact: contact,
-  // })
-  res.json(contact)
-  // await cursor.close();
 
+// Updates images
+// Adds new image to grid-fs
+// Then updates model
+app.post("/contact/update/:id", upload.single("image"), async (req, res) => {
+  const filter = { _id: req.params.id }; // Filter for a specific ObjectId
+  const update = { photo: req.file.filename }; // Update the 'photo'
+
+  Contact.updateOne(filter, update)
+    .then((result) => {
+      console.log('Update result:', result);
+      res.redirect("/contacts");
+    })
+    .catch((error) => {
+      console.error('Error updating document:', error);
+    });
 });
+
 app.post("/contactForm", upload.single('image'), async (req, res) => {
-  // const filter = { _id: ObjectId(userId) }; // Filter for a specific ObjectId
-  // const filter = { name: req.body.contactName }
-  // const update = { photo: req.body.filename }; // Update the 'age' field to 30
-
-  // Contact.updateOne(filter, update)
-  //   .then((result) => {
-  //     console.log('Update result:', result);
-  //     upload.single('image')
-  //     // 'result' will contain information about the update operation
-  //     // result.nModified will be 1 if a document matched the filter and was updated
-  //   })
-  //   .catch((error) => {
-  //     console.error('Error updating document:', error);
-  //   });
-
-  console.log(JSON.stringify(req.body));
-
   const newContact = await Contact.create({
     name: req.body.contactName,
     email: req.body.contactEmail,
@@ -191,6 +168,21 @@ app.post("/contactForm", upload.single('image'), async (req, res) => {
 });
 
 
+// DEBUG - Show all files and feilds
+app.get("/files", async (req, res) => {
+  const cursor = gfs.files.find({});
+  const allValues = await cursor.toArray();
+  await cursor.close()
+  res.json(allValues)
+})
+
+// DEBUG Route to see all contacts
+app.get('/contactsall', async (req, res) => {
+  let contact = await Contact.find({})
+  res.json(contact)
+});
+
+// Future download route
 app.get('/download/:filename', async (req, res) => {
 
   const cursor = gfs.files.find({ filename: req.params.filename });
