@@ -46,7 +46,16 @@ db.on('error', (err) => {
   console.error('MongoDB connection error:', err);
 });
 
+async function deleteFile(file) {
+  const cursor = gfs.files.find({ filename: file });
+  const files = await cursor.toArray();
+  // console.log("FILES:" + JSON.stringify(files))
 
+  await cursor.close();
+  const obj_id = new mongoose.Types.ObjectId(files[0]._id);
+  await gridfsBucket.delete(obj_id)
+
+}
 function isValidImage(file) {
   // Check file size (64MB = 64 * 1024 * 1024 bytes)
   const maxSize = 64 * 1024 * 1024; // 64MB
@@ -142,13 +151,13 @@ app.get('/contacts', async (req, res) => {
 // Updates images
 // Adds new image to grid-fs
 // Then updates model
-app.post("/contact/update/:id", upload.single("image"), async (req, res) => {
-  const filter = { _id: req.params.id }; // Filter for a specific ObjectId
+app.post("/contact/update/:image_id/:old_filename", upload.single("image"), async (req, res) => {
+  const filter = { _id: req.params.image_id }; // Filter for a specific ObjectId
   const update = { photo: req.file.filename }; // Update the 'photo'
-
+  console.log(JSON.stringify(req.params))
   Contact.updateOne(filter, update)
     .then((result) => {
-      console.log('Update result:', result);
+      deleteFile(req.params.old_filename);
       res.redirect("/contacts");
     })
     .catch((error) => {
